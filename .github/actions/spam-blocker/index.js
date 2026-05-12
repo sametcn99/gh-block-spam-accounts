@@ -28081,11 +28081,7 @@ async function runSpamBlockerAction(options, logger) {
   const profiles = await fetchProfiles(octokit, candidateLogins, {
     onProfileProcessed: (processedProfiles, totalProfiles) => {
       if (processedProfiles === totalProfiles || processedProfiles % 25 === 0) {
-        logMessage(
-          logger,
-          "info",
-          `Fetched ${processedProfiles}/${totalProfiles} profile(s).`
-        );
+        logMessage(logger, "info", `Fetched ${processedProfiles}/${totalProfiles} profile(s).`);
       }
     }
   });
@@ -28225,7 +28221,9 @@ function parseTargetType() {
   if (VALID_TARGET_TYPES.includes(input)) {
     return input;
   }
-  throw new Error(`target-type must be one of: ${VALID_TARGET_TYPES.join(", ")}. Received: ${input}`);
+  throw new Error(
+    `target-type must be one of: ${VALID_TARGET_TYPES.join(", ")}. Received: ${input}`
+  );
 }
 function log(level, message) {
   switch (level) {

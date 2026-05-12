@@ -237,6 +237,25 @@ export const useSpamBlockerStore = create<SpamBlockerStore>((set, get) => ({
       const scopeWarning = getScopeWarning(authResponse.oauthScopes);
       const rateLimitInfo = extractRateLimitInfo(authResponse.headers);
 
+      try {
+        await octokit.rest.users.listFollowersForAuthenticatedUser({ per_page: 1 });
+      } catch (permError) {
+        const permStatus = getErrorStatus(permError);
+
+        if (permStatus === 403) {
+          const permissionError =
+            "This token does not have the required permissions. Please create a new token with the user scope (classic PAT) or the Followers & Block another user permissions (fine-grained PAT) and try again.";
+
+          set({
+            connectionStatus: "error",
+            lastError: permissionError,
+          });
+
+          appendLog(set, "error", "auth", "Missing required permissions.", permissionError);
+          return;
+        }
+      }
+
       set({
         connectionStatus: "completed",
         authenticatedUser: authResponse.user,
