@@ -82,6 +82,7 @@ type SpamBlockerActions = {
   connectAccount: () => Promise<void>;
   analyzeAccounts: () => Promise<void>;
   blockSelectedAccounts: () => Promise<void>;
+  removeFollowers: () => Promise<void>;
   unblockSelectedAccounts: () => Promise<void>;
   unblockSingleAccount: (login: string) => Promise<void>;
 };
@@ -541,6 +542,141 @@ export const useSpamBlockerStore = create<SpamBlockerStore>((set, get) => ({
       });
 
       appendLog(set, "error", "block", "Blocking flow failed unexpectedly.", message);
+    }
+  },
+  removeFollowers: async () => {
+    const token = get().token.trim();
+    const selectedLogins = get().selectedLogins;
+
+    if (!token) {
+      set({
+        blockStatus: "error",
+        lastError: "Token is required to remove followers.",
+      });
+      appendLog(set, "error", "block", "Token is missing. Paste a token and retry.");
+      return;
+    }
+
+    if (selectedLogins.length === 0) {
+      set({
+        blockStatus: "error",
+        lastError: "Select at least one account before removing followers.",
+      });
+      appendLog(set, "warning", "block", "No accounts are selected for follower removal.");
+      return;
+    }
+
+    if (get().unblockStatus === "running") {
+      set({
+        blockStatus: "error",
+        lastError: "Wait until unblocking is finished before removing followers.",
+      });
+      appendLog(
+        set,
+        "warning",
+        "block",
+        "Follower removal cannot start while unblocking is running.",
+      );
+      return;
+    }
+
+    set({
+      blockStatus: "running",
+      blockProgress: {
+        total: selectedLogins.length,
+        completed: 0,
+        succeeded: 0,
+        failed: 0,
+      },
+      blockOutcomes: [],
+      lastError: null,
+    });
+
+    appendLog(
+      set,
+      "info",
+      "block",
+      `Starting follower removal for ${selectedLogins.length} account(s) (block + unblock).`,
+    );
+
+    try {
+      const octokit = createGitHubClient(token);
+      const delayMs = get().blockDelayMs;
+
+      for (const login of selectedLogins) {
+        try {
+          await blockUserByLogin(octokit, login);
+          await unblockUserByLogin(octokit, login);
+
+          set((state) => ({
+            blockOutcomes: appendOutcome(state.blockOutcomes, {
+              login,
+              success: true,
+              errorMessage: null,
+            }),
+            blockedUserLogins: state.blockedUserLogins.filter(
+              (blockedLogin) => blockedLogin !== login,
+            ),
+            blockProgress: {
+              ...state.blockProgress,
+              completed: state.blockProgress.completed + 1,
+              succeeded: state.blockProgress.succeeded + 1,
+            },
+          }));
+
+          appendLog(set, "success", "block", `Removed @${login} from followers.`);
+        } catch (error) {
+          const status = getErrorStatus(error);
+          const errorMessage =
+            status === 403 || status === 404
+              ? createBlockPermissionMessage(login)
+              : toMessage(error);
+
+          set((state) => ({
+            blockOutcomes: appendOutcome(state.blockOutcomes, {
+              login,
+              success: false,
+              errorMessage,
+            }),
+            blockProgress: {
+              ...state.blockProgress,
+              completed: state.blockProgress.completed + 1,
+              failed: state.blockProgress.failed + 1,
+            },
+          }));
+
+          appendLog(
+            set,
+            "error",
+            "block",
+            `Failed to remove @${login} from followers.`,
+            errorMessage,
+          );
+        }
+
+        if (delayMs > 0) {
+          await sleep(delayMs);
+        }
+      }
+
+      set({ blockStatus: "completed" });
+
+      const { succeeded, failed } = get().blockProgress;
+      appendLog(
+        set,
+        "success",
+        "block",
+        `Follower removal completed: ${succeeded} succeeded, ${failed} failed.`,
+      );
+    } catch (error) {
+      const message = toMessage(error);
+
+      set({
+        blockStatus: "error",
+        lastError: message,
+      });
+
+      appendLog(set, "error", "block", "Follower removal flow failed unexpectedly.", message);
     }
   },
   unblockSelectedAccounts: async () => {
