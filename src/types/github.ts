@@ -10,6 +10,9 @@ export type GitHubProfile = {
   location: string | null;
   websiteUrl: string | null;
   twitterUsername: string | null;
+  followers: number;
+  following: number;
+  publicRepos: number;
 };
 
 export type AuthenticatedGitHubUser = {

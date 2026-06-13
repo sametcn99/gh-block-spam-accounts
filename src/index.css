@@ -546,12 +546,14 @@ body {
     padding: 12px !important;
   }
 
-  /* Detection table horizontal scroll */
-  .detection-table .ant-table {
+  /* Detection & Blocked tables horizontal scroll */
+  .detection-table .ant-table,
+  .blocked-table .ant-table {
     overflow-x: auto !important;
   }
 
-  .detection-table .ant-table-content {
+  .detection-table .ant-table-content,
+  .blocked-table .ant-table-content {
     min-width: 540px;
   }
 

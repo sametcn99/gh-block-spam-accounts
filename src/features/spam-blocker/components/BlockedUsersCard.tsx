@@ -11,13 +11,16 @@ import {
   Space,
   Table,
   Tag,
+  Tooltip,
   Typography,
 } from "antd";
 import { useMemo } from "react";
 import { useSpamBlockerStore } from "../../../stores/useSpamBlockerStore";
+import type { GitHubProfile } from "../../../types/github";
 
 type BlockedUserRow = {
   login: string;
+  profile: GitHubProfile | undefined;
 };
 
 const columns: TableColumnsType<BlockedUserRow> = [
@@ -25,6 +28,8 @@ const columns: TableColumnsType<BlockedUserRow> = [
     title: "Login",
     dataIndex: "login",
     key: "login",
+    width: 140,
+    fixed: "left",
     render: (login: string) => (
       <Typography.Link href={`https://github.com/${login}`} target="_blank" rel="noreferrer">
         @{login}
@@ -32,8 +37,98 @@ const columns: TableColumnsType<BlockedUserRow> = [
     ),
   },
   {
+    title: "Name",
+    key: "name",
+    width: 130,
+    ellipsis: true,
+    render: (_, row) => row.profile?.name ?? "—",
+  },
+  {
+    title: "Bio",
+    key: "bio",
+    width: 200,
+    ellipsis: true,
+    render: (_, row) => {
+      if (!row.profile) return "—";
+      const bio = row.profile.bio ?? "—";
+      return (
+        <Tooltip title={bio} placement="topLeft">
+          <Typography.Text type="secondary" ellipsis>
+            {bio}
+          </Typography.Text>
+        </Tooltip>
+      );
+    },
+  },
+  {
+    title: "Company",
+    key: "company",
+    width: 130,
+    ellipsis: true,
+    render: (_, row) => row.profile?.company ?? "—",
+  },
+  {
+    title: "Location",
+    key: "location",
+    width: 130,
+    ellipsis: true,
+    render: (_, row) => row.profile?.location ?? "—",
+  },
+  {
+    title: "Website",
+    key: "websiteUrl",
+    width: 150,
+    ellipsis: true,
+    render: (_, row) => {
+      const url = row.profile?.websiteUrl;
+      if (!url) return "—";
+      return (
+        <Typography.Link href={url} target="_blank" rel="noreferrer" ellipsis>
+          {url}
+        </Typography.Link>
+      );
+    },
+  },
+  {
+    title: "Twitter",
+    key: "twitterUsername",
+    width: 120,
+    render: (_, row) => {
+      const twitter = row.profile?.twitterUsername;
+      if (!twitter) return "—";
+      return (
+        <Typography.Link href={`https://twitter.com/${twitter}`} target="_blank" rel="noreferrer">
+          @{twitter}
+        </Typography.Link>
+      );
+    },
+  },
+  {
+    title: "Followers",
+    key: "followers",
+    width: 100,
+    sorter: (a, b) => (a.profile?.followers ?? 0) - (b.profile?.followers ?? 0),
+    render: (_, row) => (row.profile?.followers ?? 0).toLocaleString(),
+  },
+  {
+    title: "Following",
+    key: "following",
+    width: 100,
+    sorter: (a, b) => (a.profile?.following ?? 0) - (b.profile?.following ?? 0),
+    render: (_, row) => (row.profile?.following ?? 0).toLocaleString(),
+  },
+  {
+    title: "Repos",
+    key: "publicRepos",
+    width: 80,
+    sorter: (a, b) => (a.profile?.publicRepos ?? 0) - (b.profile?.publicRepos ?? 0),
+    render: (_, row) => (row.profile?.publicRepos ?? 0).toLocaleString(),
+  },
+  {
     title: "Action",
     key: "action",
+    width: 90,
+    fixed: "right",
     render: (_, row) => {
       return <SingleUnblockButton login={row.login} />;
     },
@@ -68,6 +163,7 @@ function SingleUnblockButton({ login }: { login: string }) {
 export function BlockedUsersCard() {
   const canReadBlockedUsers = useSpamBlockerStore((state) => state.canReadBlockedUsers);
   const blockedUserLogins = useSpamBlockerStore((state) => state.blockedUserLogins);
+  const blockedUserProfiles = useSpamBlockerStore((state) => state.blockedUserProfiles);
   const selectedBlockedUserLogins = useSpamBlockerStore((state) => state.selectedBlockedUserLogins);
   const blockStatus = useSpamBlockerStore((state) => state.blockStatus);
   const unblockStatus = useSpamBlockerStore((state) => state.unblockStatus);
@@ -82,8 +178,11 @@ export function BlockedUsersCard() {
   const isBusy = blockStatus === "running" || unblockStatus === "running";
 
   const tableData = useMemo(() => {
-    return blockedUserLogins.map((login) => ({ login }));
-  }, [blockedUserLogins]);
+    return blockedUserLogins.map((login) => ({
+      login,
+      profile: blockedUserProfiles[login],
+    }));
+  }, [blockedUserLogins, blockedUserProfiles]);
 
   const unblockPercent =
     unblockProgress.total > 0
@@ -159,9 +258,11 @@ export function BlockedUsersCard() {
         ) : null}
 
         <Table<BlockedUserRow>
+          className="blocked-table"
           rowKey={(row) => row.login}
           columns={columns}
           dataSource={tableData}
+          scroll={{ x: 1450 }}
           locale={{
             emptyText: (
               <Empty

@@ -33,6 +33,9 @@ export async function fetchProfiles(
             location: data.location,
             websiteUrl: data.blog || null,
             twitterUsername: data.twitter_username ?? null,
+            followers: data.followers ?? 0,
+            following: data.following ?? 0,
+            publicRepos: data.public_repos ?? 0,
           } satisfies GitHubProfile;
         } catch (error) {
           const status = getErrorStatus(error);

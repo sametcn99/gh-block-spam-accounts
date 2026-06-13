@@ -41,7 +41,8 @@ const columns: TableColumnsType<SpamDetection> = [
   {
     title: "Login",
     key: "login",
-    width: 160,
+    width: 140,
+    fixed: "left",
     render: (_, detection) => (
       <Typography.Link
         href={`https://github.com/${detection.profile.login}`}
@@ -53,25 +54,84 @@ const columns: TableColumnsType<SpamDetection> = [
     ),
   },
   {
-    title: "Profile summary",
-    key: "profileSummary",
+    title: "Name",
+    key: "name",
+    width: 130,
+    ellipsis: true,
+    render: (_, detection) => detection.profile.name ?? "—",
+  },
+  {
+    title: "Bio",
+    key: "bio",
+    width: 200,
     ellipsis: true,
     render: (_, detection) => {
-      const summary =
-        detection.profile.bio ??
-        detection.profile.name ??
-        detection.profile.company ??
-        detection.profile.location ??
-        "No public bio or profile text";
-
+      const bio = detection.profile.bio ?? "—";
       return (
-        <Tooltip title={summary} placement="topLeft">
-          <Typography.Text type="secondary" ellipsis style={{ maxWidth: 260 }}>
-            {summary}
+        <Tooltip title={bio} placement="topLeft">
+          <Typography.Text type="secondary" ellipsis>
+            {bio}
           </Typography.Text>
         </Tooltip>
       );
     },
+  },
+  {
+    title: "Company",
+    key: "company",
+    width: 130,
+    ellipsis: true,
+    render: (_, detection) => detection.profile.company ?? "—",
+  },
+  {
+    title: "Location",
+    key: "location",
+    width: 130,
+    ellipsis: true,
+    render: (_, detection) => detection.profile.location ?? "—",
+  },
+  {
+    title: "Website",
+    key: "websiteUrl",
+    width: 150,
+    ellipsis: true,
+    render: (_, detection) => {
+      const url = detection.profile.websiteUrl;
+      if (!url) return "—";
+      return (
+        <Typography.Link href={url} target="_blank" rel="noreferrer" ellipsis>
+          {url}
+        </Typography.Link>
+      );
+    },
+  },
+  {
+    title: "Twitter",
+    key: "twitterUsername",
+    width: 120,
+    render: (_, detection) => {
+      const twitter = detection.profile.twitterUsername;
+      if (!twitter) return "—";
+      return (
+        <Typography.Link href={`https://twitter.com/${twitter}`} target="_blank" rel="noreferrer">
+          @{twitter}
+        </Typography.Link>
+      );
+    },
+  },
+  {
+    title: "Followers",
+    key: "followers",
+    width: 100,
+    sorter: (a, b) => a.profile.followers - b.profile.followers,
+    render: (_, detection) => detection.profile.followers.toLocaleString(),
+  },
+  {
+    title: "Following",
+    key: "following",
+    width: 100,
+    sorter: (a, b) => a.profile.following - b.profile.following,
+    render: (_, detection) => detection.profile.following.toLocaleString(),
   },
   {
     title: "Score",
@@ -130,6 +190,7 @@ export function DetectionsCard() {
             rowKey={(detection) => detection.profile.login}
             columns={columns}
             dataSource={detections}
+            scroll={{ x: 1550 }}
             locale={{
               emptyText: (
                 <Empty

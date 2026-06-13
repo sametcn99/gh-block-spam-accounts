@@ -49,6 +49,7 @@ const baseState: SpamBlockerState = {
   scopeWarning: null,
   canReadBlockedUsers: true,
   blockedUserLogins: [],
+  blockedUserProfiles: {},
   selectedBlockedUserLogins: [],
   detectionSensitivity: "balanced",
   customKeywords: [],
@@ -306,6 +307,7 @@ export const useSpamBlockerStore = create<SpamBlockerStore>((set, get) => ({
       detections: [],
       selectedLogins: [],
       blockedUserLogins: [],
+      blockedUserProfiles: {},
       selectedBlockedUserLogins: [],
       lastError: null,
       analysisProgress: emptyAnalysisProgress,
@@ -332,6 +334,7 @@ export const useSpamBlockerStore = create<SpamBlockerStore>((set, get) => ({
       set({
         canReadBlockedUsers: blockedResult.canReadBlockList,
         blockedUserLogins: blockedResult.blockedUserLogins,
+        blockedUserProfiles: {},
         selectedBlockedUserLogins: [],
         analysisProgress: {
           followersCount: followers.length,
@@ -378,6 +381,22 @@ export const useSpamBlockerStore = create<SpamBlockerStore>((set, get) => ({
       });
 
       appendLog(set, "info", "fetch", `Fetched ${profiles.length} profile(s) successfully.`);
+
+      let blockedUserProfiles: Record<string, import("../types/github").GitHubProfile> = {};
+
+      if (blockedResult.canReadBlockList && blockedResult.blockedUserLogins.length > 0) {
+        const blockedProfiles = await fetchProfiles(octokit, blockedResult.blockedUserLogins);
+        blockedUserProfiles = Object.fromEntries(
+          blockedProfiles.map((profile) => [profile.login, profile]),
+        );
+        set({ blockedUserProfiles });
+        appendLog(
+          set,
+          "info",
+          "fetch",
+          `Fetched ${blockedProfiles.length} blocked user profile(s).`,
+        );
+      }
 
       const detections = detectSpamProfiles(
         profiles,
@@ -481,19 +500,30 @@ export const useSpamBlockerStore = create<SpamBlockerStore>((set, get) => ({
         try {
           await blockUserByLogin(octokit, login);
 
-          set((state) => ({
-            blockOutcomes: appendOutcome(state.blockOutcomes, {
-              login,
-              success: true,
-              errorMessage: null,
-            }),
-            blockedUserLogins: appendUniqueLogin(state.blockedUserLogins, login),
-            blockProgress: {
-              ...state.blockProgress,
-              completed: state.blockProgress.completed + 1,
-              succeeded: state.blockProgress.succeeded + 1,
-            },
-          }));
+          set((state) => {
+            const detection = state.detections.find((d) => d.profile.login === login);
+            const existingProfile = state.blockedUserProfiles[login];
+            const newProfile = detection
+              ? { [login]: detection.profile }
+              : existingProfile
+                ? { [login]: existingProfile }
+                : {};
+
+            return {
+              blockOutcomes: appendOutcome(state.blockOutcomes, {
+                login,
+                success: true,
+                errorMessage: null,
+              }),
+              blockedUserLogins: appendUniqueLogin(state.blockedUserLogins, login),
+              blockedUserProfiles: { ...state.blockedUserProfiles, ...newProfile },
+              blockProgress: {
+                ...state.blockProgress,
+                completed: state.blockProgress.completed + 1,
+                succeeded: state.blockProgress.succeeded + 1,
+              },
+            };
+          });
 
           appendLog(set, "success", "block", `Blocked @${login}.`);
         } catch (error) {
@@ -608,21 +638,25 @@ export const useSpamBlockerStore = create<SpamBlockerStore>((set, get) => ({
           await blockUserByLogin(octokit, login);
           await unblockUserByLogin(octokit, login);
 
-          set((state) => ({
-            blockOutcomes: appendOutcome(state.blockOutcomes, {
-              login,
-              success: true,
-              errorMessage: null,
-            }),
-            blockedUserLogins: state.blockedUserLogins.filter(
-              (blockedLogin) => blockedLogin !== login,
-            ),
-            blockProgress: {
-              ...state.blockProgress,
-              completed: state.blockProgress.completed + 1,
-              succeeded: state.blockProgress.succeeded + 1,
-            },
-          }));
+          set((state) => {
+            const { [login]: _, ...remainingBlockedProfiles } = state.blockedUserProfiles;
+            return {
+              blockOutcomes: appendOutcome(state.blockOutcomes, {
+                login,
+                success: true,
+                errorMessage: null,
+              }),
+              blockedUserLogins: state.blockedUserLogins.filter(
+                (blockedLogin) => blockedLogin !== login,
+              ),
+              blockedUserProfiles: remainingBlockedProfiles,
+              blockProgress: {
+                ...state.blockProgress,
+                completed: state.blockProgress.completed + 1,
+                succeeded: state.blockProgress.succeeded + 1,
+              },
+            };
+          });
 
           appendLog(set, "success", "block", `Removed @${login} from followers.`);
         } catch (error) {
@@ -737,24 +771,28 @@ export const useSpamBlockerStore = create<SpamBlockerStore>((set, get) => ({
         try {
           await unblockUserByLogin(octokit, login);
 
-          set((state) => ({
-            unblockOutcomes: appendOutcome(state.unblockOutcomes, {
-              login,
-              success: true,
-              errorMessage: null,
-            }),
-            blockedUserLogins: state.blockedUserLogins.filter(
-              (blockedLogin) => blockedLogin !== login,
-            ),
-            selectedBlockedUserLogins: state.selectedBlockedUserLogins.filter(
-              (blockedLogin) => blockedLogin !== login,
-            ),
-            unblockProgress: {
-              ...state.unblockProgress,
-              completed: state.unblockProgress.completed + 1,
-              succeeded: state.unblockProgress.succeeded + 1,
-            },
-          }));
+          set((state) => {
+            const { [login]: _, ...remainingBlockedProfiles } = state.blockedUserProfiles;
+            return {
+              unblockOutcomes: appendOutcome(state.unblockOutcomes, {
+                login,
+                success: true,
+                errorMessage: null,
+              }),
+              blockedUserLogins: state.blockedUserLogins.filter(
+                (blockedLogin) => blockedLogin !== login,
+              ),
+              selectedBlockedUserLogins: state.selectedBlockedUserLogins.filter(
+                (blockedLogin) => blockedLogin !== login,
+              ),
+              blockedUserProfiles: remainingBlockedProfiles,
+              unblockProgress: {
+                ...state.unblockProgress,
+                completed: state.unblockProgress.completed + 1,
+                succeeded: state.unblockProgress.succeeded + 1,
+              },
+            };
+          });
 
           appendLog(set, "success", "unblock", `Unblocked @${login}.`);
         } catch (error) {

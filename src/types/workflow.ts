@@ -1,4 +1,4 @@
-import type { AuthenticatedGitHubUser, RateLimitInfo } from "./github";
+import type { AuthenticatedGitHubUser, GitHubProfile, RateLimitInfo } from "./github";
 import type { AppLogEntry } from "./logging";
 import type { DetectionSensitivity, SpamDetection } from "./spam";
 
@@ -34,6 +34,7 @@ export type SpamBlockerState = {
   scopeWarning: string | null;
   canReadBlockedUsers: boolean;
   blockedUserLogins: string[];
+  blockedUserProfiles: Record<string, GitHubProfile>;
   selectedBlockedUserLogins: string[];
   detectionSensitivity: DetectionSensitivity;
   customKeywords: string[];
