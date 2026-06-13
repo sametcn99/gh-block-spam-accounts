@@ -7,6 +7,7 @@ import "@fontsource-variable/plus-jakarta-sans";
 import "@fontsource-variable/dm-sans";
 import "./index.css";
 import { softAuroraTheme } from "./theme/softAuroraTheme";
+import { Analytics } from "@vercel/analytics/react"
 
 const rootElement = document.getElementById("root");
 
@@ -20,6 +21,7 @@ createRoot(rootElement).render(
       <HappyProvider>
         <AntdApp>
           <App />
+          <Analytics />
         </AntdApp>
       </HappyProvider>
     </ConfigProvider>
