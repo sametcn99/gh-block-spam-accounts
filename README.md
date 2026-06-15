@@ -74,11 +74,32 @@ on:
     inputs:
       apply-blocks:
         description: "Execute real block operations"
-        required: true
+        required: false
         type: boolean
         default: false
+      detection-sensitivity:
+        description: "Detection sensitivity"
+        required: false
+        type: choice
+        default: balanced
+        options:
+          - aggressive
+          - balanced
+          - conservative
+      target-type:
+        description: "Which social graph to scan"
+        required: false
+        type: choice
+        default: both
+        options:
+          - followers
+          - following
+          - both
   schedule:
     - cron: "0 6 * * *"
+
+permissions:
+  contents: read
 
 jobs:
   spam-blocker:
@@ -88,9 +109,9 @@ jobs:
         uses: sametcn99/gh-block-spam-accounts@main
         with:
           github-token: ${{ secrets.SPAM_BLOCKER_TOKEN }}
-          detection-sensitivity: balanced
-          target-type: both
-          apply-blocks: ${{ github.event_name == 'workflow_dispatch' && inputs.apply-blocks || 'false' }}
+          detection-sensitivity: ${{ github.event_name == 'workflow_dispatch' && inputs['detection-sensitivity'] || 'balanced' }}
+          target-type: ${{ github.event_name == 'workflow_dispatch' && inputs['target-type'] || 'both' }}
+          apply-blocks: ${{ github.event_name == 'workflow_dispatch' && inputs['apply-blocks'] || false }}
 ```
 
 A ready-to-copy remote usage example also exists in `examples/spam-blocker-remote.yml`.

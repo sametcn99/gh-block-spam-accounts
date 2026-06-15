@@ -1,16 +1,10 @@
-name: Detect and optionally block GitHub spam accounts
+name: Spam Blocker Self-Test
 
 on:
   workflow_dispatch:
     inputs:
-      apply-blocks:
-        description: "Set to true only after you trust the dry-run output"
-        required: false
-        type: boolean
-        default: false
       detection-sensitivity:
-        description: "How strict the spam detection should be"
-        required: false
+        description: "Detection sensitivity"
         type: choice
         default: balanced
         options:
@@ -18,25 +12,25 @@ on:
           - balanced
           - conservative
       target-type:
-        description: "Which relationship graph to scan"
-        required: false
+        description: "Which social graph to scan"
         type: choice
         default: both
         options:
           - followers
           - following
           - both
+      apply-blocks:
+        description: "Set to true only after you trust the dry-run output"
+        type: boolean
+        default: false
       custom-keywords:
-        description: "Optional comma-separated or newline-separated extra keywords"
-        required: false
+        description: "Extra spam keywords (comma or newline separated)"
         type: string
       exclude-users:
-        description: "Optional comma-separated or newline-separated GitHub logins to skip"
-        required: false
+        description: "Logins to skip (comma or newline separated)"
         type: string
       delay-ms:
-        description: "Delay between block requests in milliseconds"
-        required: false
+        description: "Delay between block requests (ms)"
         type: string
         default: "750"
   schedule:
@@ -52,15 +46,12 @@ concurrency:
 jobs:
   spam-blocker:
     runs-on: ubuntu-latest
-
     steps:
       - name: Run spam blocker
         id: spam_blocker
-        uses: sametcn99/gh-block-spam-accounts@main
+        uses: ./
         with:
-          # Use a classic PAT with `user` scope, or a fine-grained PAT with
-          # `Block another user: write` if you want real blocking to work.
-          github-token: ${{ secrets.SPAM_BLOCKER_TOKEN }}
+          github-token: ${{ secrets.SPAM_BLOCKER_TOKEN || github.token }}
           detection-sensitivity: ${{ github.event_name == 'workflow_dispatch' && inputs['detection-sensitivity'] || 'balanced' }}
           target-type: ${{ github.event_name == 'workflow_dispatch' && inputs['target-type'] || 'both' }}
           custom-keywords: ${{ github.event_name == 'workflow_dispatch' && inputs['custom-keywords'] || '' }}
