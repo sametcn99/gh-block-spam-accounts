@@ -116,7 +116,7 @@ jobs:
 
 A ready-to-copy remote usage example also exists in `examples/spam-blocker-remote.yml`.
 
-The repository also includes `.github/workflows/spam-blocker-example.yml` as a local self-test workflow for this repo. For real blocking, replace `${{ github.token }}` with a PAT secret such as `${{ secrets.SPAM_BLOCKER_TOKEN }}`.
+The repository also includes `./spam-blocker.example.yml` as a local self-test workflow for this repo. For real blocking, replace `${{ github.token }}` with a PAT secret such as `${{ secrets.SPAM_BLOCKER_TOKEN }}`.
 
 For external consumption, prefer a release tag such as `@v1` instead of `@main`.
 
